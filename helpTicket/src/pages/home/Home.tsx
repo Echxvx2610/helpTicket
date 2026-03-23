@@ -1,13 +1,27 @@
-import { LayoutDashboard } from "lucide-react"
+import { useAuth } from "@/hooks/useAuth"
+import UserDashboard from "./UserDashboard"
+import SupportDashboard from "./SupportDashboard"
+import AdminDashboard from "./AdminDashboard"
+import { Loader2 } from "lucide-react"
 
 export default function Home() {
-  return (
-    <div className="flex h-full flex-col items-center justify-center p-8 text-center animate-in fade-in duration-500">
-      <div className="rounded-full bg-primary/10 p-4 mb-4">
-        <LayoutDashboard className="size-12 text-primary" />
+  const { profile, loading } = useAuth()
+
+  if (loading) {
+    return (
+      <div className="flex h-full items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
       </div>
-      <h2 className="text-2xl font-bold mb-2">Bienvenido a HelpTicket</h2>
-      <p className="text-muted-foreground max-w-sm">Aquí puedes ver un resumen general del estado del sistema y acceso rápido a tus opciones.</p>
-    </div>
-  )
+    )
+  }
+
+  // Renderizamos la vista correspondiente según el rol
+  if (profile?.role === 'admin') {
+    return <AdminDashboard />
+  } else if (profile?.role === 'support') {
+    return <SupportDashboard />
+  }
+
+  // Por defecto (user o rol no encontrado)
+  return <UserDashboard />
 }
