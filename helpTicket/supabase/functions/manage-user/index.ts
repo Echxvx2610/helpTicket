@@ -26,25 +26,42 @@ Deno.serve(async (req) => {
             { global: { headers: { Authorization: req.headers.get('Authorization')! } } }
         )
 
+        const authHeader = req.headers.get('Authorization')
+        if (!authHeader) {
+            return new Response(JSON.stringify({ error: 'Falta el token de autorización.' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+        }
+        
+        const jwt = authHeader.replace('Bearer ', '')
+
         // Verificamos quién hace la petición
         const {
             data: { user },
             error: userError
-        } = await supabaseClient.auth.getUser()
+        } = await supabaseClient.auth.getUser(jwt)
 
         if (!user || userError) {
             return new Response(JSON.stringify({ error: 'No autorizado o token vencido.' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
         }
 
-        const orgId = user.app_metadata?.organization_id
-        const adminRole = user.app_metadata?.role
+        // Cliente Admin para bypass de RLS y verificar membresía
+        const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey)
 
-        if (!orgId || adminRole !== 'admin') {
-            return new Response(JSON.stringify({ error: 'Permisos insuficientes. Sólo un administrador puede modificar usuarios en su organización.' }), { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+        const { data: member, error: memberError } = await supabaseAdmin
+            .from('organization_members')
+            .select('organization_id, role')
+            .eq('user_id', user.id)
+            .single()
+
+        if (memberError || !member) {
+            return new Response(JSON.stringify({ error: 'Permisos insuficientes. No se encontró su membresía.' }), { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
         }
 
-        // Cliente Admin para bypass de RLS
-        const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey)
+        const orgId = member.organization_id
+        const adminRole = member.role
+
+        if (adminRole !== 'admin') {
+            return new Response(JSON.stringify({ error: 'Permisos insuficientes. Sólo un administrador puede modificar usuarios en su organización.' }), { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+        }
 
         // ELIMINAR USUARIO
         if (req.method === 'DELETE') {
@@ -90,13 +107,13 @@ Deno.serve(async (req) => {
             if (status) memberProps.status = status
 
             if (Object.keys(memberProps).length > 0) {
-                const { error: memberError } = await supabaseAdmin
+                const { error: updateError } = await supabaseAdmin
                     .from('organization_members')
                     .update(memberProps)
                     .eq('user_id', userId)
                     .eq('organization_id', orgId)
 
-                if (memberError) throw memberError
+                if (updateError) throw updateError
             }
 
             return new Response(JSON.stringify({ message: 'Usuario actualizado exitosamente' }), {

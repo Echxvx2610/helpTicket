@@ -1,68 +1,214 @@
-import { Ticket, History, MessageSquare, PlusCircle } from "lucide-react"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { useState, useEffect } from "react"
+import { Link } from "react-router-dom"
+import { useAuth } from "@/hooks/useAuth"
+import { supabase } from "@/lib/supabaseClient"
+import { CreateTicketDialog } from "@/components/tickets/CreateTicketDialog"
+import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import {
+  PlusCircle,
+  Ticket,
+  BookOpen,
+  Clock,
+  ArrowRight,
+  Search,
+  MessageSquare,
+  Loader2
+} from "lucide-react"
+
+interface TicketData {
+  id: string
+  title: string
+  status: string
+  priority: string
+  created_at: string
+}
+
+const PRIORITY_COLORS: Record<string, string> = {
+  Baja: "bg-green-100 text-green-800",
+  Media: "bg-yellow-100 text-yellow-800",
+  Alta: "bg-orange-100 text-orange-800",
+  Urgente: "bg-red-100 text-red-800",
+}
+
+const STATE_LABELS: Record<string, string> = {
+  Abierto: "Abierto",
+  "En progreso": "En Progreso",
+  Resuelto: "Resuelto",
+  Cerrado: "Cerrado",
+}
 
 export default function UserDashboard() {
+  const { profile, user } = useAuth()
+  const [recentTickets, setRecentTickets] = useState<TicketData[]>([])
+  const [loading, setLoading] = useState(true)
+  const [dialogOpen, setDialogOpen] = useState(false)
+
+  const firstName = profile?.full_name?.split(" ")[0] || "..."
+
+  const fetchRecentTickets = async () => {
+    if (!user) return
+    setLoading(true)
+    const { data, error } = await supabase
+      .from("tickets")
+      .select("id, title, status, priority, created_at")
+      .eq("created_by", user.id)
+      .order("created_at", { ascending: false })
+      .limit(3)
+
+    if (!error && data) {
+      setRecentTickets(data)
+    }
+    setLoading(false)
+  }
+
+  useEffect(() => {
+    if (user) {
+      fetchRecentTickets()
+    }
+  }, [user])
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString("es-ES", {
+      day: "2-digit",
+      month: "short",
+    })
+  }
+
   return (
-    <div className="flex flex-col gap-6 animate-in fade-in duration-500">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-3xl font-bold tracking-tight text-gray-800">Mis Tickets</h2>
-          <p className="text-muted-foreground">Gestiona tus solicitudes de soporte.</p>
-        </div>
-        <Button className="gap-2 rounded-lg shadow-sm hover:shadow-md transition-all">
-          <PlusCircle className="w-4 h-4" /> Nuevo Ticket
-        </Button>
-      </div>
+    <div className="flex flex-col gap-8 animate-in fade-in duration-500 max-w-5xl mx-auto w-full">
+      {/* Banner de Bienvenida */}
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-blue-600 to-indigo-700 p-8 sm:p-10 shadow-lg text-white">
+        <div className="relative z-10">
+          <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight mb-3">
+            ¡Hola, {firstName}! 👋
+          </h1>
+          <p className="text-blue-100 text-lg max-w-xl mb-8">
+            Bienvenido al centro de soporte. ¿En qué te podemos ayudar hoy? Estamos aquí para resolver tus inquietudes.
+          </p>
 
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card className="border-l-4 border-l-blue-500 shadow-sm hover:shadow-md transition-all">
-          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-            <CardTitle className="text-sm font-medium">Tickets Abiertos</CardTitle>
-            <Ticket className="w-4 h-4 text-blue-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">0</div>
-            <p className="text-xs text-muted-foreground">Esperando soporte</p>
-          </CardContent>
-        </Card>
-        
-        <Card className="border-l-4 border-l-green-500 shadow-sm hover:shadow-md transition-all">
-          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-            <CardTitle className="text-sm font-medium">Tickets Resueltos</CardTitle>
-            <History className="w-4 h-4 text-green-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">0</div>
-            <p className="text-xs text-muted-foreground">Historial completo</p>
-          </CardContent>
-        </Card>
-
-        <Card className="border-l-4 border-l-purple-500 shadow-sm hover:shadow-md transition-all">
-          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-            <CardTitle className="text-sm font-medium">Nuevos Comentarios</CardTitle>
-            <MessageSquare className="w-4 h-4 text-purple-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">0</div>
-            <p className="text-xs text-muted-foreground">Mensajes sin leer</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      <Card className="shadow-sm mt-4">
-        <CardHeader>
-          <CardTitle>Historial Reciente</CardTitle>
-          <CardDescription>Tus últimos tickets generados</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-col items-center justify-center py-10 text-center text-gray-500">
-            <Ticket className="w-10 h-10 text-gray-300 mb-3" />
-            <p>No tienes tickets recientes</p>
-            <p className="text-sm">Crea un ticket nuevo si necesitas ayuda.</p>
+          <div className="relative max-w-md w-full">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Buscar en la base de conocimientos..."
+              className="w-full bg-white/10 backdrop-blur-md border border-white/20 text-white placeholder:text-blue-200 rounded-full py-3.5 pl-12 pr-4 focus:outline-none focus:ring-2 focus:ring-white/50 transition-all font-medium"
+            />
           </div>
-        </CardContent>
-      </Card>
+        </div>
+
+        {/* Elementos decorativos */}
+        <div className="absolute right-0 top-0 -translate-y-1/4 translate-x-1/4 w-64 h-64 bg-white/10 rounded-full blur-3xl" />
+        <div className="absolute right-32 bottom-0 translate-y-1/4 w-40 h-40 bg-indigo-400/20 rounded-full blur-2xl" />
+      </div>
+
+      {/* Quick Actions */}
+      <div className="grid gap-4 sm:grid-cols-3">
+        <Card
+          className="group cursor-pointer hover:shadow-xl hover:-translate-y-1 transition-all duration-300 border-none shadow-md bg-white overflow-hidden"
+          onClick={() => setDialogOpen(true)}
+        >
+          <CardContent className="p-6 flex flex-col items-center text-center h-full relative">
+            <div className="absolute top-0 w-full h-1 bg-blue-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+            <div className="w-14 h-14 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+              <PlusCircle className="w-7 h-7" />
+            </div>
+            <h3 className="font-bold text-gray-800 text-lg mb-1">Crear Ticket</h3>
+            <p className="text-sm text-gray-500">Reporta un nuevo problema o solicitud técnica.</p>
+          </CardContent>
+        </Card>
+
+        <Link to="/tickets" className="block outline-none">
+          <Card className="group cursor-pointer hover:shadow-xl hover:-translate-y-1 transition-all duration-300 border-none shadow-md bg-white overflow-hidden h-full">
+            <CardContent className="p-6 flex flex-col items-center text-center h-full relative">
+              <div className="absolute top-0 w-full h-1 bg-purple-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+              <div className="w-14 h-14 rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                <Ticket className="w-7 h-7" />
+              </div>
+              <h3 className="font-bold text-gray-800 text-lg mb-1">Mis Tickets</h3>
+              <p className="text-sm text-gray-500">Revisa el estado de todas tus solicitudes activas.</p>
+            </CardContent>
+          </Card>
+        </Link>
+
+        <Card className="group cursor-pointer hover:shadow-xl hover:-translate-y-1 transition-all duration-300 border-none shadow-md bg-white overflow-hidden">
+          <CardContent className="p-6 flex flex-col items-center text-center h-full relative">
+            <div className="absolute top-0 w-full h-1 bg-green-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+            <div className="w-14 h-14 rounded-2xl bg-green-50 text-green-600 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+              <BookOpen className="w-7 h-7" />
+            </div>
+            <h3 className="font-bold text-gray-800 text-lg mb-1">Base de Ayuda</h3>
+            <p className="text-sm text-gray-500">Encuentra guías y soluciones paso a paso.</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Actividad Reciente */}
+      <div className="mt-2">
+        <div className="flex items-center justify-between mb-4 px-1">
+          <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+            <Clock className="w-5 h-5 text-gray-400" />
+            Actividad Reciente
+          </h2>
+          <Link to="/tickets" className="text-sm font-semibold text-blue-600 hover:text-blue-800 flex items-center gap-1">
+            Ver todo <ArrowRight className="w-4 h-4" />
+          </Link>
+        </div>
+
+        <Card className="border-none shadow-md overflow-hidden bg-white">
+          <div className="divide-y divide-gray-100">
+            {loading ? (
+              <div className="p-8 text-center text-muted-foreground flex items-center justify-center gap-2">
+                <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                Cargando historial...
+              </div>
+            ) : recentTickets.length === 0 ? (
+              <div className="p-10 text-center flex flex-col items-center justify-center">
+                <div className="bg-gray-50 rounded-full p-4 mb-3">
+                  <Ticket className="w-8 h-8 text-gray-300" />
+                </div>
+                <p className="text-gray-800 font-medium">Aún no tienes tickets registrados</p>
+                <p className="text-sm text-gray-500 mt-1">Tus futuras solicitudes de soporte aparecerán aquí.</p>
+              </div>
+            ) : (
+              recentTickets.map((ticket) => (
+                <div key={ticket.id} className="p-5 hover:bg-gray-50/80 transition-colors flex items-center justify-between group">
+                  <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 shrink-0">
+                      <MessageSquare className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h4 className="font-semibold text-gray-800 text-sm md:text-base line-clamp-1">{ticket.title}</h4>
+                      <div className="flex items-center gap-3 mt-1 text-xs font-medium">
+                        <span className={`px-2 py-0.5 rounded-full ${ticket.status === "Abierto"
+                          ? "bg-blue-100 text-blue-800"
+                          : ticket.status === "En progreso"
+                            ? "bg-yellow-100 text-yellow-800"
+                            : "bg-green-100 text-green-800"
+                          }`}>
+                          {STATE_LABELS[ticket.status] || ticket.status}
+                        </span>
+                        <span className="text-gray-400 flex items-center gap-1">
+                          {formatDate(ticket.created_at)}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  <Link to={`/tickets`} className="opacity-0 group-hover:opacity-100 transition-opacity p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-full">
+                    <ArrowRight className="w-5 h-5" />
+                  </Link>
+                </div>
+              ))
+            )}
+          </div>
+        </Card>
+      </div>
+
+      <CreateTicketDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        onSuccess={fetchRecentTickets}
+      />
     </div>
   )
 }

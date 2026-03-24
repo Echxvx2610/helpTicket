@@ -66,14 +66,14 @@ export default function Login() {
 
     return (
         <div className="relative h-screen w-full">
-            <div className="absolute inset-0 bg-gradient-to-br from-indigo-100 to-mauve-600" />
+            <div className="absolute inset-0 bg-gradient-to-br from-white to-indigo-900" />
 
             <div className="relative flex items-center justify-center h-full px-4">
-                <Card className="w-full max-w-sm border border-white/20 bg-white/80 backdrop-blur-xl shadow-xl animate-in fade-in zoom-in-95 duration-300">
+                <Card className="w-full max-w-sm border border-slate-900 bg-white/80 backdrop-blur-xl shadow-2xl animate-in fade-in zoom-in-95 duration-300">
 
                     <CardHeader className="space-y-2 text-center">
                         <CardTitle className="flex items-center justify-center gap-2">
-                            <img src="helpticketicon.png" alt="logo" className="w-10 h-10" />
+                            <img src="helpticketicon.svg" alt="logo" className="w-10 h-10" />
                             <span className="text-2xl font-bold">HelpTicket</span>
                         </CardTitle>
                         <CardDescription className="flex flex-col gap-1">

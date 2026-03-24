@@ -26,14 +26,12 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 
 import {
-    GalleryVerticalEnd,
     Users,
     ChevronsUpDown,
     ChevronRight,
-    ArrowLeftRight,
     WalletMinimal,
     UserRoundPen,
     LayoutDashboard,
@@ -59,7 +57,7 @@ export function App_Sidebar() {
     const userInitials = userName.substring(0, 2).toUpperCase()
 
     return (
-        <Sidebar collapsible="icon" variant="sticky" className="md:flex">
+        <Sidebar collapsible="icon" className="md:flex">
             <SidebarHeader>
                 <SidebarMenu>
                     <SidebarMenuItem>
@@ -69,7 +67,7 @@ export function App_Sidebar() {
                                 className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
                             >
                                 <div className="flex size-6 align-center justify-center rounded-lg">
-                                    <img src="/helpticketicon.png" alt="logo" />
+                                    <img src="/helpticketicon.svg" alt="logo" />
                                 </div>
                                 <div className="grid flex-1 text-left text-sm leading-tight">
                                     <span className="truncate font-semibold">HelpTicket</span>
@@ -122,22 +120,31 @@ export function App_Sidebar() {
                             </Collapsible>
                         )}
 
-                        {/* Menú Avanzado de Tickets - Oculto para 'user' */}
-                        {userRole !== 'user' && (
-                            <Collapsible asChild className="group/collapsible">
-                                <SidebarMenuItem>
-                                    <CollapsibleTrigger asChild>
-                                        <SidebarMenuButton tooltip="Tickets">
+                        {/* Menú de Tickets - Visible para todos */}
+                        <Collapsible asChild className="group/collapsible">
+                            <SidebarMenuItem>
+                                <CollapsibleTrigger asChild>
+                                    <SidebarMenuButton tooltip="Tickets" asChild>
+                                        <Link to={userRole === 'user' || userRole === 'support' ? "/tickets" : "/tickets/gestion"} onClick={handleNavigation}>
                                             <Ticket />
                                             <span>Tickets</span>
-                                            <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
-                                        </SidebarMenuButton>
-                                    </CollapsibleTrigger>
+                                            {userRole === 'admin' && (
+                                                <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
+                                            )}
+                                        </Link>
+                                    </SidebarMenuButton>
+                                </CollapsibleTrigger>
+                                {userRole === 'admin' && (
                                     <CollapsibleContent>
                                         <SidebarMenuSub>
                                             <SidebarMenuSubItem>
                                                 <SidebarMenuSubButton asChild>
-                                                    <Link to="/tickets/metricas" onClick={handleNavigation}>Metricas</Link>
+                                                    <Link to="/tickets/gestion" onClick={handleNavigation}>Gestión</Link>
+                                                </SidebarMenuSubButton>
+                                            </SidebarMenuSubItem>
+                                            <SidebarMenuSubItem>
+                                                <SidebarMenuSubButton asChild>
+                                                    <Link to="/tickets/metricas" onClick={handleNavigation}>Métricas</Link>
                                                 </SidebarMenuSubButton>
                                             </SidebarMenuSubItem>
                                             <SidebarMenuSubItem>
@@ -147,9 +154,9 @@ export function App_Sidebar() {
                                             </SidebarMenuSubItem>
                                         </SidebarMenuSub>
                                     </CollapsibleContent>
-                                </SidebarMenuItem>
-                            </Collapsible>
-                        )}
+                                )}
+                            </SidebarMenuItem>
+                        </Collapsible>
 
                     </SidebarMenu>
                 </SidebarGroup>

@@ -27,21 +27,44 @@ Deno.serve(async (req) => {
             { global: { headers: { Authorization: req.headers.get('Authorization')! } } }
         )
 
+        const authHeader = req.headers.get('Authorization')
+        if (!authHeader) {
+            return new Response(JSON.stringify({ error: 'Falta el token de autorización.' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+        }
+        
+        const jwt = authHeader.replace('Bearer ', '')
+
         // Verificamos quién hace la petición
         const {
             data: { user },
             error: userError
-        } = await supabaseClient.auth.getUser()
+        } = await supabaseClient.auth.getUser(jwt)
 
         // Validamos si es Admin leyendo el token (multitenancy)
         if (!user || userError) {
             return new Response(JSON.stringify({ error: 'No autorizado o token vencido.' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
         }
 
-        const orgId = user.app_metadata?.organization_id
-        const adminRole = user.app_metadata?.role
+        // Cliente con Service Role Key para poder crear un auth.user y leer BD
+        const supabaseAdmin = createClient(
+            supabaseUrl,
+            serviceRoleKey
+        )
+
+        const { data: member, error: memberError } = await supabaseAdmin
+            .from('organization_members')
+            .select('organization_id, role')
+            .eq('user_id', user.id)
+            .single()
+
+        if (memberError || !member) {
+            return new Response(JSON.stringify({ error: 'Permisos insuficientes. No se encontró su membresía.' }), { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+        }
+
+        const orgId = member.organization_id
+        const adminRole = member.role
         
-        if (!orgId || adminRole !== 'admin') {
+        if (adminRole !== 'admin') {
             return new Response(JSON.stringify({ error: 'Permisos insuficientes. Sólo un administrador puede crear usuarios en su organización.' }), { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
         }
 
@@ -50,12 +73,6 @@ Deno.serve(async (req) => {
         if (!email || !password || !full_name || !role) {
             return new Response(JSON.stringify({ error: 'Faltan campos obligatorios' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
         }
-
-        // Cliente con Service Role Key para poder crear un auth.user sin que la sesión cambie
-        const supabaseAdmin = createClient(
-            supabaseUrl,
-            serviceRoleKey
-        )
 
         const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
             email,
@@ -69,7 +86,7 @@ Deno.serve(async (req) => {
         }
 
         // Asociar el usuario a la organización del administrador en organization_members
-        const { error: memberError } = await supabaseAdmin
+        const { error: insertError } = await supabaseAdmin
             .from('organization_members')
             .insert({
                 organization_id: orgId,
@@ -78,8 +95,8 @@ Deno.serve(async (req) => {
                 status: 'active'
             })
             
-        if (memberError) {
-            throw memberError
+        if (insertError) {
+            throw insertError
         }
 
         return new Response(JSON.stringify({ user: newUser.user, message: 'Usuario creado exitosamente' }), {

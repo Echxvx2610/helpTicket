@@ -1,0 +1,350 @@
+
+1. Estructura de la tabla tickets 
+[
+  {
+    "column_name": "id",
+    "data_type": "uuid",
+    "is_nullable": "NO",
+    "column_default": "uuid_generate_v4()"
+  },
+  {
+    "column_name": "organization_id",
+    "data_type": "uuid",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "column_name": "title",
+    "data_type": "text",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "column_name": "description",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "column_name": "type",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "column_name": "status",
+    "data_type": "text",
+    "is_nullable": "NO",
+    "column_default": "'Abierto'::text"
+  },
+  {
+    "column_name": "priority",
+    "data_type": "text",
+    "is_nullable": "NO",
+    "column_default": "'Media'::text"
+  },
+  {
+    "column_name": "created_by",
+    "data_type": "uuid",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "column_name": "assigned_to",
+    "data_type": "uuid",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "column_name": "location",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "column_name": "created_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "NO",
+    "column_default": "now()"
+  },
+  {
+    "column_name": "updated_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "NO",
+    "column_default": "now()"
+  },
+  {
+    "column_name": "resolved_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "column_name": "closed_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": null
+  }
+]
+2. Políticas RLS actuales
+[
+  {
+    "tablename": "notifications",
+    "policyname": "Usuario ve sus notificaciones",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "SELECT",
+    "using_expression": "((user_id = auth.uid()) AND (organization_id = get_user_org_id()))",
+    "with_check_expression": null
+  },
+  {
+    "tablename": "notifications",
+    "policyname": "Usuario marca notificaciones leídas",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "UPDATE",
+    "using_expression": "(user_id = auth.uid())",
+    "with_check_expression": null
+  },
+  {
+    "tablename": "organization_members",
+    "policyname": "Miembro ve su membresía",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "SELECT",
+    "using_expression": "(organization_id = get_user_org_id())",
+    "with_check_expression": null
+  },
+  {
+    "tablename": "organization_members",
+    "policyname": "Admin gestiona miembros de su org",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "ALL",
+    "using_expression": "((organization_id = get_user_org_id()) AND is_org_admin())",
+    "with_check_expression": null
+  },
+  {
+    "tablename": "organization_members",
+    "policyname": "Trigger puede insertar miembro",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "INSERT",
+    "using_expression": null,
+    "with_check_expression": "true"
+  },
+  {
+    "tablename": "priorities",
+    "policyname": "Admin gestiona prioridades de su org",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "ALL",
+    "using_expression": "((organization_id = get_user_org_id()) AND is_org_admin())",
+    "with_check_expression": null
+  },
+  {
+    "tablename": "priorities",
+    "policyname": "Miembros ven prioridades de su org",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "SELECT",
+    "using_expression": "(organization_id = get_user_org_id())",
+    "with_check_expression": null
+  },
+  {
+    "tablename": "profiles",
+    "policyname": "Usuario ve su perfil",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "SELECT",
+    "using_expression": "(id = auth.uid())",
+    "with_check_expression": null
+  },
+  {
+    "tablename": "profiles",
+    "policyname": "Usuario actualiza su perfil",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "UPDATE",
+    "using_expression": "(id = auth.uid())",
+    "with_check_expression": null
+  },
+  {
+    "tablename": "profiles",
+    "policyname": "Trigger inserta perfil",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "INSERT",
+    "using_expression": null,
+    "with_check_expression": "true"
+  },
+  {
+    "tablename": "profiles",
+    "policyname": "Miembros de la misma org se ven entre sí",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "SELECT",
+    "using_expression": "(id IN ( SELECT organization_members.user_id\n   FROM organization_members\n  WHERE (organization_members.organization_id = get_user_org_id())))",
+    "with_check_expression": null
+  },
+  {
+    "tablename": "statuses",
+    "policyname": "Admin gestiona estados de su org",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "ALL",
+    "using_expression": "((organization_id = get_user_org_id()) AND is_org_admin())",
+    "with_check_expression": null
+  },
+  {
+    "tablename": "statuses",
+    "policyname": "Miembros ven estados de su org",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "SELECT",
+    "using_expression": "(organization_id = get_user_org_id())",
+    "with_check_expression": null
+  },
+  {
+    "tablename": "ticket_attachments",
+    "policyname": "Miembros suben adjuntos en su org",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "INSERT",
+    "using_expression": null,
+    "with_check_expression": "(organization_id = get_user_org_id())"
+  },
+  {
+    "tablename": "ticket_attachments",
+    "policyname": "Miembros ven adjuntos de su org",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "SELECT",
+    "using_expression": "(organization_id = get_user_org_id())",
+    "with_check_expression": null
+  },
+  {
+    "tablename": "ticket_comments",
+    "policyname": "Miembros ven comentarios de su org",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "SELECT",
+    "using_expression": "((organization_id = get_user_org_id()) AND ((NOT is_internal) OR (get_user_org_role() = ANY (ARRAY['admin'::text, 'support'::text]))))",
+    "with_check_expression": null
+  },
+  {
+    "tablename": "ticket_comments",
+    "policyname": "Miembros comentan en su org",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "INSERT",
+    "using_expression": null,
+    "with_check_expression": "(organization_id = get_user_org_id())"
+  },
+  {
+    "tablename": "ticket_timeline",
+    "policyname": "Sistema inserta timeline",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "INSERT",
+    "using_expression": null,
+    "with_check_expression": "(organization_id = get_user_org_id())"
+  },
+  {
+    "tablename": "ticket_timeline",
+    "policyname": "Miembros ven timeline de su org",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "SELECT",
+    "using_expression": "(organization_id = get_user_org_id())",
+    "with_check_expression": null
+  },
+  {
+    "tablename": "ticket_types",
+    "policyname": "Admin gestiona tipos de su org",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "ALL",
+    "using_expression": "((organization_id = get_user_org_id()) AND is_org_admin())",
+    "with_check_expression": null
+  },
+  {
+    "tablename": "ticket_types",
+    "policyname": "Miembros ven catálogos de su org",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "SELECT",
+    "using_expression": "(organization_id = get_user_org_id())",
+    "with_check_expression": null
+  },
+  {
+    "tablename": "tickets",
+    "policyname": "Soporte y admin modifican tickets",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "UPDATE",
+    "using_expression": "((organization_id = get_user_org_id()) AND (get_user_org_role() = ANY (ARRAY['admin'::text, 'support'::text])))",
+    "with_check_expression": null
+  },
+  {
+    "tablename": "tickets",
+    "policyname": "Miembros crean tickets en su org",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "INSERT",
+    "using_expression": null,
+    "with_check_expression": "(organization_id = get_user_org_id())"
+  },
+  {
+    "tablename": "tickets",
+    "policyname": "Miembros ven tickets de su org",
+    "permissive": "PERMISSIVE",
+    "roles": "{public}",
+    "cmd": "SELECT",
+    "using_expression": "(organization_id = get_user_org_id())",
+    "with_check_expression": null
+  }
+]
+3. Definición de roles en profiles
+[
+  {
+    "tabla": "organization_members",
+    "nombre_restriccion": "organization_members_organization_id_fkey",
+    "definicion_roles_o_restriccion": "FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE"
+  },
+  {
+    "tabla": "organization_members",
+    "nombre_restriccion": "organization_members_organization_id_user_id_key",
+    "definicion_roles_o_restriccion": "UNIQUE (organization_id, user_id)"
+  },
+  {
+    "tabla": "organization_members",
+    "nombre_restriccion": "organization_members_pkey",
+    "definicion_roles_o_restriccion": "PRIMARY KEY (id)"
+  },
+  {
+    "tabla": "organization_members",
+    "nombre_restriccion": "organization_members_role_check",
+    "definicion_roles_o_restriccion": "CHECK ((role = ANY (ARRAY['admin'::text, 'support'::text, 'user'::text])))"
+  },
+  {
+    "tabla": "organization_members",
+    "nombre_restriccion": "organization_members_status_check",
+    "definicion_roles_o_restriccion": "CHECK ((status = ANY (ARRAY['active'::text, 'inactive'::text])))"
+  },
+  {
+    "tabla": "organization_members",
+    "nombre_restriccion": "organization_members_user_id_fkey",
+    "definicion_roles_o_restriccion": "FOREIGN KEY (user_id) REFERENCES profiles(id) ON DELETE CASCADE"
+  },
+  {
+    "tabla": "profiles",
+    "nombre_restriccion": "profiles_id_fkey",
+    "definicion_roles_o_restriccion": "FOREIGN KEY (id) REFERENCES auth.users(id) ON DELETE CASCADE"
+  },
+  {
+    "tabla": "profiles",
+    "nombre_restriccion": "profiles_pkey",
+    "definicion_roles_o_restriccion": "PRIMARY KEY (id)"
+  }
+]

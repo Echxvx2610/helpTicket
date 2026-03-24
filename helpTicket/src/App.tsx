@@ -6,6 +6,8 @@ import { Routes, Route } from "react-router-dom"
 import Home from "@/pages/home/Home"
 import Users from "@/pages/users/Users"
 import Tickets from "@/pages/tickets/Tickets"
+import SupportTickets from "@/pages/tickets/SupportTickets"
+import TicketsIndex from "@/pages/tickets/TicketsIndex"
 import Login from "@/pages/login/login"
 import ResetPassword from "@/pages/login/ResetPassword"
 import Profile from "@/pages/profile/Profile"
@@ -46,9 +48,15 @@ export default function App() {
           <Route path="/tickets/metricas" element={<Tickets />} />
           <Route path="/tickets/analiticas" element={<Tickets />} />
 
+          {/* Soporte y Usuarios */}
+          <Route element={<ProtectedRoute allowedRoles={['user', 'support']} />}>
+            <Route path="/tickets" element={<TicketsIndex />} />
+          </Route>
+
           {/* Solo admin */}
           <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
             <Route path="/usuarios/gestion" element={<Users />} />
+            <Route path="/tickets/gestion" element={<SupportTickets />} />
             <Route path="/billing" element={<Billing />} />
           </Route>
 
