@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react"
 import { supabase } from "@/lib/supabaseClient"
 import { useAuth } from "@/hooks/useAuth"
+import { useOrgSettings } from "@/contexts/OrgSettingsContext"
 import { ShieldCheck, Users, Activity, Settings, TrendingUp, Loader2, ChevronRight } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -15,6 +16,7 @@ import { Link } from "react-router-dom"
 
 export default function AdminDashboard() {
   const { profile } = useAuth()
+  const { settings } = useOrgSettings()
   const [unassignedTickets, setUnassignedTickets] = useState<any[]>([])
   const [supportUsers, setSupportUsers] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
@@ -66,13 +68,22 @@ export default function AdminDashboard() {
     }
 
     // Fetch support users
-    const { data: sUsers } = await supabase
-      .from("profiles")
-      .select("id, full_name, email")
+    const { data: sUsersData } = await supabase
+      .from("organization_members")
+      .select(`
+        profiles (
+          id,
+          full_name,
+          email
+        )
+      `)
       .eq("organization_id", profile.organization_id)
-      .eq("role", "support")
+      .in("role", ["support", "admin"])
       
-    if (sUsers) setSupportUsers(sUsers)
+    if (sUsersData) {
+      const mappedUsers = sUsersData.map((m: any) => m.profiles).filter(Boolean)
+      setSupportUsers(mappedUsers)
+    }
     setLoading(false)
   }
 
@@ -101,40 +112,49 @@ export default function AdminDashboard() {
         <h2 className="text-3xl font-bold tracking-tight text-gray-800 flex items-center gap-2">
           <ShieldCheck className="w-8 h-8 text-primary" /> Panel de Administración
         </h2>
-        <p className="text-muted-foreground">Análisis global, asignaciones y estadísticas del sistema.</p>
+        <p className="text-muted-foreground">Análisis global de {settings.system_name}, asignaciones y estadísticas.</p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-3">
-        <Card className="shadow-sm hover:shadow-md transition-all">
-          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-            <CardTitle className="text-sm font-medium">Usuarios Registrados</CardTitle>
-            <Users className="w-4 h-4 text-primary" />
+      <div className="grid gap-5 md:grid-cols-3">
+        <Card className="relative overflow-hidden border-none shadow-sm hover:shadow-lg transition-all bg-gradient-to-br from-blue-50/80 to-white group">
+          <div className="absolute top-0 left-0 w-1 h-full bg-blue-500 group-hover:w-1.5 transition-all" />
+          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0 relative z-10">
+            <CardTitle className="text-sm font-semibold text-blue-900 uppercase tracking-wider">Usuarios Registrados</CardTitle>
+            <div className="p-2 bg-blue-100 rounded-full">
+              <Users className="w-4 h-4 text-blue-600" />
+            </div>
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">Gestión de Usuarios</div>
-            <p className="text-xs text-muted-foreground mt-1">Administrar roles y perfiles</p>
+          <CardContent className="relative z-10">
+            <div className="text-4xl font-black text-blue-950 tracking-tight">Gestión</div>
+            <p className="text-xs text-blue-600 mt-2 font-medium">Administrar roles y perfiles</p>
           </CardContent>
         </Card>
         
-        <Card className="shadow-sm hover:shadow-md transition-all">
-          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-            <CardTitle className="text-sm font-medium">Salud del Sistema</CardTitle>
-            <Activity className="w-4 h-4 text-green-500" />
+        <Card className="relative overflow-hidden border-none shadow-sm hover:shadow-lg transition-all bg-gradient-to-br from-green-50/80 to-white group">
+          <div className="absolute top-0 left-0 w-1 h-full bg-green-500 group-hover:w-1.5 transition-all" />
+          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0 relative z-10">
+            <CardTitle className="text-sm font-semibold text-green-900 uppercase tracking-wider">Salud del Sistema</CardTitle>
+            <div className="p-2 bg-green-100 rounded-full">
+              <Activity className="w-4 h-4 text-green-600" />
+            </div>
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">Óptimo</div>
-            <p className="text-xs text-muted-foreground mt-1">Todos los servicios en línea</p>
+          <CardContent className="relative z-10">
+            <div className="text-4xl font-black text-green-950 tracking-tight">Óptimo</div>
+            <p className="text-xs text-green-600 mt-2 font-medium">Todos los servicios en línea</p>
           </CardContent>
         </Card>
 
-        <Card className="shadow-sm hover:shadow-md transition-all">
-          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-            <CardTitle className="text-sm font-medium">Rendimiento (SLAs)</CardTitle>
-            <TrendingUp className="w-4 h-4 text-blue-500" />
+        <Card className="relative overflow-hidden border-none shadow-sm hover:shadow-lg transition-all bg-gradient-to-br from-indigo-50/80 to-white group">
+          <div className="absolute top-0 left-0 w-1 h-full bg-indigo-500 group-hover:w-1.5 transition-all" />
+          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0 relative z-10">
+            <CardTitle className="text-sm font-semibold text-indigo-900 uppercase tracking-wider">Rendimiento (SLAs)</CardTitle>
+            <div className="p-2 bg-indigo-100 rounded-full">
+              <TrendingUp className="w-4 h-4 text-indigo-600" />
+            </div>
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">---</div>
-            <p className="text-xs text-muted-foreground mt-1">Métricas de tiempo de respuesta</p>
+          <CardContent className="relative z-10">
+            <div className="text-4xl font-black text-indigo-950 tracking-tight">---</div>
+            <p className="text-xs text-indigo-600 mt-2 font-medium">Métricas de tiempo de respuesta</p>
           </CardContent>
         </Card>
       </div>
@@ -144,7 +164,7 @@ export default function AdminDashboard() {
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <div>
               <CardTitle>Cola Rápida de Asignación</CardTitle>
-              <CardDescription>Tickets recientes pendientes de soporte</CardDescription>
+              <CardDescription>{settings.ticket_label}s recientes pendientes de {settings.support_role_label.toLowerCase()}</CardDescription>
             </div>
             <Link to="/tickets" className="hidden sm:block">
               <Button variant="outline" size="sm" className="gap-1 h-8">
@@ -163,12 +183,12 @@ export default function AdminDashboard() {
                 <p>Excelente, no hay tickets pendientes en la cola.</p>
               </div>
             ) : (
-              <div className="space-y-3">
+              <div className="space-y-3 max-h-[340px] overflow-y-auto pr-1">
                 {unassignedTickets.map(ticket => (
                   <div key={ticket.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 bg-white border border-red-100 rounded-lg shadow-sm hover:border-red-300 transition-colors">
                     <div className="flex-1 min-w-0">
                       <p className="font-semibold text-sm text-gray-800 truncate">{ticket.title}</p>
-                      <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground truncate">
+                      <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
                         <span className={`px-1.5 py-0.5 rounded font-medium ${ticket.priority === 'Urgente' ? 'bg-red-100 text-red-700' : 'bg-gray-100'}`}>
                           {ticket.priority}
                         </span>

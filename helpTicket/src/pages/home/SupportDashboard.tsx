@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react"
 import { supabase } from "@/lib/supabaseClient"
 import { useAuth } from "@/hooks/useAuth"
+import { useOrgSettings } from "@/contexts/OrgSettingsContext"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Users, Ticket, CheckCircle, AlertCircle, Loader2, ChevronRight } from "lucide-react"
@@ -8,6 +9,7 @@ import { Link } from "react-router-dom"
 
 export default function SupportDashboard() {
   const { user, profile } = useAuth()
+  const { settings } = useOrgSettings()
   const [stats, setStats] = useState({
     unassigned: 0,
     myTickets: 0,
@@ -61,8 +63,8 @@ export default function SupportDashboard() {
   return (
     <div className="flex flex-col gap-6 animate-in fade-in duration-500">
       <div>
-        <h2 className="text-3xl font-bold tracking-tight text-gray-800">Panel de Soporte</h2>
-        <p className="text-muted-foreground">Gestiona la cola de tickets y asignaciones.</p>
+        <h2 className="text-3xl font-bold tracking-tight text-gray-800">Panel de {settings.support_role_label}</h2>
+        <p className="text-muted-foreground">Gestiona la cola de {settings.ticket_label.toLowerCase()}s y asignaciones.</p>
       </div>
 
       <div className="grid gap-4 md:grid-cols-4">

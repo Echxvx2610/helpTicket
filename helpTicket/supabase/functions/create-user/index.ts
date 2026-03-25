@@ -28,21 +28,27 @@ Deno.serve(async (req) => {
         )
 
         const authHeader = req.headers.get('Authorization')
+        console.log('Auth header:', authHeader)
+        
         if (!authHeader) {
             return new Response(JSON.stringify({ error: 'Falta el token de autorización.' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
         }
         
         const jwt = authHeader.replace('Bearer ', '')
+        console.log('JWT:', jwt.substring(0, 50) + '...')
 
         // Verificamos quién hace la petición
         const {
             data: { user },
             error: userError
         } = await supabaseClient.auth.getUser(jwt)
+        
+        console.log('User:', user)
+        console.log('User error:', userError)
 
         // Validamos si es Admin leyendo el token (multitenancy)
         if (!user || userError) {
-            return new Response(JSON.stringify({ error: 'No autorizado o token vencido.' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+            return new Response(JSON.stringify({ error: 'No autorizado o token vencido: ' + userError?.message }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
         }
 
         // Cliente con Service Role Key para poder crear un auth.user y leer BD

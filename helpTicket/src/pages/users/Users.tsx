@@ -3,8 +3,10 @@ import { Users, Plus, Shield, User, Loader2, RefreshCcw, Pencil, Trash2, Search 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardFooter } from "@/components/ui/card"
 import { supabase } from "@/lib/supabaseClient"
+import { useAuth } from "@/hooks/useAuth"
+import { useOrgSettings } from "@/contexts/OrgSettingsContext"
 
 interface Profile {
   id: string
@@ -16,6 +18,8 @@ interface Profile {
 }
 
 export default function UsersPage() {
+  const { profile } = useAuth()
+  const { settings } = useOrgSettings()
   const [users, setUsers] = useState<Profile[]>([])
   const [loading, setLoading] = useState(true)
   const [showCreateDialog, setShowCreateDialog] = useState(false)
@@ -94,25 +98,35 @@ export default function UsersPage() {
     setFeedbackMsg({ type: "", text: "" })
 
     try {
-      const { data: sessionData } = await supabase.auth.getSession()
+      let { data: { session }, error: sessionError } = await supabase.auth.getSession()
+      
+      console.log('Session:', session)
+      console.log('Session Error:', sessionError)
+      console.log('Access Token:', session?.access_token?.substring(0, 20) + '...')
+      
+      if (!session || sessionError) {
+        const { data: { session: refreshedSession }, error: refreshError } = await supabase.auth.refreshSession()
+        session = refreshedSession
+        sessionError = refreshError
+        console.log('Refreshed Session:', session)
+        console.log('Refresh Error:', refreshError)
+      }
+      
+      if (sessionError || !session?.access_token) {
+        throw new Error("No hay sesión activa. Por favor, inicia sesión nuevamente.")
+      }
 
-      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-user`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "apikey": import.meta.env.VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY,
-          "Authorization": `Bearer ${sessionData.session?.access_token}`
-        },
-        body: JSON.stringify({
+      const { error } = await supabase.functions.invoke('create-user', {
+        body: {
           email: newEmail,
           password: newPassword,
           full_name: newFullname,
-          role: newRole
-        })
+          role: newRole,
+          organization_id: profile?.organization_id
+        }
       })
 
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error || "Error al crear usuario")
+      if (error) throw error
 
       setFeedbackMsg({ type: "success", text: "Usuario creado exitosamente" })
       setNewFullname("")
@@ -150,26 +164,29 @@ export default function UsersPage() {
     setFeedbackMsg({ type: "", text: "" })
 
     try {
-      const { data: sessionData } = await supabase.auth.getSession()
+      let { data: { session }, error: sessionError } = await supabase.auth.getSession()
+      
+      if (!session || sessionError) {
+        const { data: { session: refreshedSession } } = await supabase.auth.refreshSession()
+        session = refreshedSession
+      }
+      
+      if (!session?.access_token) {
+        throw new Error("No hay sesión activa. Por favor, inicia sesión nuevamente.")
+      }
 
-      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/manage-user`, {
+      const { error } = await supabase.functions.invoke('manage-user', {
         method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          "apikey": import.meta.env.VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY,
-          "Authorization": `Bearer ${sessionData.session?.access_token}`
-        },
-        body: JSON.stringify({
+        body: {
           userId: editingUser.id,
           full_name: editFullname,
           role: editRole,
           status: editStatus,
           password: editPassword
-        })
+        }
       })
 
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error || "Error al actualizar usuario")
+      if (error) throw error
 
       setFeedbackMsg({ type: "success", text: "Usuario actualizado exitosamente" })
       fetchUsers()
@@ -198,22 +215,25 @@ export default function UsersPage() {
     setFeedbackMsg({ type: "", text: "" })
 
     try {
-      const { data: sessionData } = await supabase.auth.getSession()
+      let { data: { session }, error: sessionError } = await supabase.auth.getSession()
+      
+      if (!session || sessionError) {
+        const { data: { session: refreshedSession } } = await supabase.auth.refreshSession()
+        session = refreshedSession
+      }
+      
+      if (!session?.access_token) {
+        throw new Error("No hay sesión activa. Por favor, inicia sesión nuevamente.")
+      }
 
-      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/manage-user`, {
+      const { error } = await supabase.functions.invoke('manage-user', {
         method: "DELETE",
-        headers: {
-          "Content-Type": "application/json",
-          "apikey": import.meta.env.VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY,
-          "Authorization": `Bearer ${sessionData.session?.access_token}`
-        },
-        body: JSON.stringify({
+        body: {
           userId: deletingUser.id
-        })
+        }
       })
 
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error || "Error al eliminar usuario")
+      if (error) throw error
 
       setFeedbackMsg({ type: "success", text: "Usuario eliminado" })
       fetchUsers()
@@ -277,8 +297,8 @@ export default function UsersPage() {
               >
                 <option value="all">Todos los roles</option>
                 <option value="admin">Administrador</option>
-                <option value="support">Soporte</option>
-                <option value="user">Usuario</option>
+                <option value="support">{settings.support_role_label}</option>
+                <option value="user">{settings.operator_role_label || settings.user_role_label}</option>
               </select>
 
               <select
@@ -299,9 +319,9 @@ export default function UsersPage() {
           </div>
         </CardHeader>
         <CardContent className="p-0">
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto max-h-[calc(100vh-18rem)] overflow-y-auto">
             <table className="w-full text-sm text-left">
-              <thead className="text-xs text-gray-500 uppercase bg-gray-50/50">
+              <thead className="text-xs text-gray-500 uppercase bg-gray-50/50 sticky top-0 z-10">
                 <tr>
                   <th className="px-6 py-4 font-medium">Nombre</th>
                   <th className="px-6 py-4 font-medium">Email</th>
@@ -329,19 +349,21 @@ export default function UsersPage() {
                 ) : (
                   filteredUsers.map((u) => (
                     <tr key={u.id} className="border-b border-gray-50 hover:bg-gray-50/30 transition-colors">
-                      <td className="px-6 py-4 font-medium text-gray-800 flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold">
-                          {u.full_name?.charAt(0).toUpperCase() || <User className="w-4 h-4" />}
+                      <td className="px-6 py-4 font-medium text-gray-800">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold shrink-0">
+                            {u.full_name?.charAt(0).toUpperCase() || <User className="w-4 h-4" />}
+                          </div>
+                          <span className="truncate max-w-[150px]">{u.full_name}</span>
                         </div>
-                        {u.full_name}
                       </td>
-                      <td className="px-6 py-4 text-gray-600">{u.email}</td>
+                      <td className="px-6 py-4 text-gray-600 max-w-[180px]"><span className="truncate block">{u.email}</span></td>
                       <td className="px-6 py-4">
                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium gap-1
                           ${u.role === 'admin' ? 'bg-purple-100 text-purple-800' :
                             u.role === 'support' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800'}`}>
                           {u.role === 'admin' && <Shield className="w-3 h-3" />}
-                          {u.role.charAt(0).toUpperCase() + u.role.slice(1)}
+                          {u.role === 'admin' ? 'Administrador' : u.role === 'support' ? settings.support_role_label : (settings.operator_role_label || settings.user_role_label)}
                         </span>
                       </td>
                       <td className="px-6 py-4">
@@ -406,9 +428,9 @@ export default function UsersPage() {
                   value={newRole}
                   onChange={e => setNewRole(e.target.value as any)}
                 >
-                  <option value="user">Usuario (Solo sus propios tickets)</option>
-                  <option value="support">Soporte técnico (Gestión de tickets)</option>
-                  <option value="admin">Administrador (Control total)</option>
+                  <option value="user">{settings.operator_role_label || settings.user_role_label}</option>
+                  <option value="support">{settings.support_role_label}</option>
+                  <option value="admin">Administrador</option>
                 </select>
               </div>
 
@@ -461,8 +483,8 @@ export default function UsersPage() {
                     value={editRole}
                     onChange={e => setEditRole(e.target.value as any)}
                   >
-                    <option value="user">Usuario</option>
-                    <option value="support">Soporte</option>
+                    <option value="user">{settings.operator_role_label || settings.user_role_label}</option>
+                    <option value="support">{settings.support_role_label}</option>
                     <option value="admin">Administrador</option>
                   </select>
                 </div>

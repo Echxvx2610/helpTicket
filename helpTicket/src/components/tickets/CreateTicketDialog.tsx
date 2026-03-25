@@ -1,6 +1,7 @@
 import { useState, useRef } from "react"
 import { supabase } from "@/lib/supabaseClient"
 import { useAuth } from "@/hooks/useAuth"
+import { useOrgSettings } from "@/contexts/OrgSettingsContext"
 import {
   Dialog,
   DialogContent,
@@ -28,41 +29,7 @@ interface CreateTicketDialogProps {
   onSuccess?: () => void
 }
 
-const CATEGORIES = [
-  "Hardware",
-  "Software",
-  "Red/Conectividad",
-  "Cuenta/Acceso",
-  "Otro",
-]
 
-const PRIORITIES = [
-  { value: "Baja", label: "Baja" },
-  { value: "Media", label: "Media" },
-  { value: "Alta", label: "Alta" },
-  { value: "Urgente", label: "Urgente" },
-]
-
-const AREAS = [
-  "Administración",
-  "Contabilidad",
-  "Recursos Humanos",
-  "Ventas",
-  "Soporte Técnico",
-  "Desarrollo",
-  "Otro",
-]
-
-const DEVICES = [
-  "Desktop",
-  "Laptop",
-  "Servidor",
-  "Impresora",
-  "Teléfono",
-  "Tablet",
-  "Red/Router",
-  "Otro",
-]
 
 export function CreateTicketDialog({
   open,
@@ -70,6 +37,7 @@ export function CreateTicketDialog({
   onSuccess,
 }: CreateTicketDialogProps) {
   const { user, profile } = useAuth()
+  const { settings } = useOrgSettings()
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const [loading, setLoading] = useState(false)
@@ -109,10 +77,17 @@ export function CreateTicketDialog({
     ]
 
     const validFiles = files.filter((file) => {
-      const isValidType = validTypes.includes(file.type)
+      const isValidMime = validTypes.includes(file.type)
+      const isValidExt = file.name.toLowerCase().match(/\.(pdf|doc|docx|xls|xlsx|jpg|jpeg|png|gif)$/)
+      const isValidType = isValidMime || !!isValidExt
       const isValidSize = file.size <= 10 * 1024 * 1024
       return isValidType && isValidSize
     })
+
+    const rejectedFiles = files.filter(f => !validFiles.includes(f))
+    if (rejectedFiles.length > 0) {
+      setError(`Archivos ignorados (formato no soportado o > 10MB): ${rejectedFiles.map(f => f.name).join(', ')}`)
+    }
 
     setAttachments((prev) => [...prev, ...validFiles])
     if (fileInputRef.current) {
@@ -250,9 +225,9 @@ export function CreateTicketDialog({
               <PlusCircle className="w-6 h-6 text-primary" />
             </div>
             <div className="text-left">
-              <DialogTitle className="text-xl font-bold text-gray-800">Crear Nuevo Ticket</DialogTitle>
+              <DialogTitle className="text-xl font-bold text-gray-800">Crear Nuevo {settings.ticket_label}</DialogTitle>
               <DialogDescription className="text-sm mt-1">
-                Completa los detalles de tu solicitud de soporte técnico
+                Completa los detalles de tu solicitud para {settings.support_role_label.toLowerCase()}
               </DialogDescription>
             </div>
           </div>
@@ -296,7 +271,7 @@ export function CreateTicketDialog({
                   <SelectValue placeholder="Seleccionar" />
                 </SelectTrigger>
                 <SelectContent>
-                  {CATEGORIES.map((cat) => (
+                  {settings.ticket_categories.map((cat) => (
                     <SelectItem key={cat} value={cat}>
                       {cat}
                     </SelectItem>
@@ -318,9 +293,9 @@ export function CreateTicketDialog({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {PRIORITIES.map((p) => (
-                    <SelectItem key={p.value} value={p.value}>
-                      {p.label}
+                  {settings.ticket_priorities.map((p) => (
+                    <SelectItem key={p} value={p}>
+                      {p}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -330,7 +305,7 @@ export function CreateTicketDialog({
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label>Área</Label>
+              <Label>{settings.location_label}</Label>
               <Select
                 value={formData.area}
                 onValueChange={(value) => handleInputChange("area", value)}
@@ -340,7 +315,7 @@ export function CreateTicketDialog({
                   <SelectValue placeholder="Seleccionar" />
                 </SelectTrigger>
                 <SelectContent>
-                  {AREAS.map((area) => (
+                  {settings.ticket_areas.map((area) => (
                     <SelectItem key={area} value={area}>
                       {area}
                     </SelectItem>
@@ -362,7 +337,7 @@ export function CreateTicketDialog({
                   <SelectValue placeholder="Seleccionar" />
                 </SelectTrigger>
                 <SelectContent>
-                  {DEVICES.map((device) => (
+                  {settings.ticket_devices.map((device) => (
                     <SelectItem key={device} value={device}>
                       {device}
                     </SelectItem>
@@ -440,7 +415,7 @@ export function CreateTicketDialog({
               ) : (
                 <>
                   <PlusCircle className="w-5 h-5 mr-2" />
-                  Enviar Ticket
+                  Enviar {settings.ticket_label}
                 </>
               )}
             </Button>

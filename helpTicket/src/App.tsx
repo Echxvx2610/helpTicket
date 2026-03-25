@@ -11,23 +11,27 @@ import TicketsIndex from "@/pages/tickets/TicketsIndex"
 import Login from "@/pages/login/login"
 import ResetPassword from "@/pages/login/ResetPassword"
 import Profile from "@/pages/profile/Profile"
+import Customization from "@/pages/profile/Customization"
 import Billing from "@/pages/billing/Billing"
 import { ProtectedRoute } from "@/components/ProtectedRoute"
 import { Outlet, Navigate } from "react-router-dom"
+import { OrgSettingsProvider } from "@/contexts/OrgSettingsContext"
 
 function RootLayout() {
   return (
-    <TooltipProvider>
-      <SidebarProvider>
-        <App_Sidebar />
-        <div className="flex flex-col w-full min-h-screen">
-          <App_Header />
-          <main className="flex-1 p-4 w-full">
-            <Outlet />
-          </main>
-        </div>
-      </SidebarProvider>
-    </TooltipProvider>
+    <OrgSettingsProvider>
+      <TooltipProvider>
+        <SidebarProvider>
+          <App_Sidebar />
+          <div className="flex flex-col w-full min-h-screen">
+            <App_Header />
+            <main className="flex-1 p-4 w-full">
+              <Outlet />
+            </main>
+          </div>
+        </SidebarProvider>
+      </TooltipProvider>
+    </OrgSettingsProvider>
   )
 }
 
@@ -58,6 +62,7 @@ export default function App() {
             <Route path="/usuarios/gestion" element={<Users />} />
             <Route path="/tickets/gestion" element={<SupportTickets />} />
             <Route path="/billing" element={<Billing />} />
+            <Route path="/personalizacion" element={<Customization />} />
           </Route>
 
         </Route>

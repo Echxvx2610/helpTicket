@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { CreateTicketDialog } from "@/components/tickets/CreateTicketDialog"
 import { PlusCircle, Ticket, Clock, CheckCircle, AlertCircle, Send, X, Loader2, MessageSquare } from "lucide-react"
 import { Textarea } from "@/components/ui/textarea"
+import { useOrgSettings } from "@/contexts/OrgSettingsContext"
 
 interface Ticket {
   id: string
@@ -54,6 +55,7 @@ const STATE_LABELS: Record<string, string> = {
 
 export default function UserTickets() {
   const { user, profile } = useAuth()
+  const { settings } = useOrgSettings()
   const [tickets, setTickets] = useState<Ticket[]>([])
   const [loading, setLoading] = useState(true)
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -195,14 +197,14 @@ export default function UserTickets() {
     <div className="flex flex-col gap-6 animate-in fade-in duration-500">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-3xl font-bold tracking-tight text-gray-800">Mis Tickets</h2>
-          <p className="text-muted-foreground">Gestiona tus solicitudes de soporte</p>
+          <h2 className="text-3xl font-bold tracking-tight text-gray-800">Mis {settings.ticket_label}s</h2>
+          <p className="text-muted-foreground">Gestiona tus solicitudes de {settings.support_role_label.toLowerCase()}</p>
         </div>
         <Button
           className="gap-2 rounded-lg shadow-sm hover:shadow-md transition-all"
           onClick={() => setDialogOpen(true)}
         >
-          <PlusCircle className="w-4 h-4" /> Nuevo Ticket
+          <PlusCircle className="w-4 h-4" /> Nuevo {settings.ticket_label}
         </Button>
       </div>
 
@@ -254,7 +256,7 @@ export default function UserTickets() {
         <div className="lg:col-span-2">
           <Card className="shadow-sm">
             <CardHeader>
-              <CardTitle>Historial de Tickets</CardTitle>
+              <CardTitle>Historial de {settings.ticket_label}s</CardTitle>
             </CardHeader>
             <CardContent>
               {loading ? (
@@ -266,9 +268,9 @@ export default function UserTickets() {
                   <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mb-6 shadow-inner">
                     <Ticket className="w-10 h-10 text-primary" />
                   </div>
-                  <h3 className="text-xl font-semibold text-gray-800 mb-2">No tienes tickets generados</h3>
+                  <h3 className="text-xl font-semibold text-gray-800 mb-2">No tienes {settings.ticket_label.toLowerCase()}s generados</h3>
                   <p className="text-muted-foreground max-w-sm mb-6 text-sm">
-                    Tu historial está completamente limpio. Si tienes alguna incidencia, solicitud o duda técnica, puedes generar un ticket y te ayudaremos pronto.
+                    Tu historial está completamente limpio. Si tienes alguna incidencia, solicitud o duda, puedes generar un {settings.ticket_label.toLowerCase()} y te ayudaremos pronto.
                   </p>
                   <Button
                     size="lg"
@@ -276,11 +278,11 @@ export default function UserTickets() {
                     onClick={() => setDialogOpen(true)}
                   >
                     <PlusCircle className="w-5 h-5 mr-2" />
-                    Crear mi primer ticket
+                    Crear mi primer {settings.ticket_label.toLowerCase()}
                   </Button>
                 </div>
               ) : (
-                <div className="space-y-3">
+                <div className="space-y-3 max-h-[calc(100vh-18rem)] overflow-y-auto pr-1">
                   {tickets.map((ticket) => (
                     <div
                       key={ticket.id}
@@ -300,7 +302,7 @@ export default function UserTickets() {
                             {ticket.priority}
                           </span>
                         </div>
-                        <p className="text-sm text-gray-600 truncate mb-3">
+                        <p className="text-sm text-gray-600 line-clamp-2 mb-3">
                           {ticket.description}
                         </p>
                         <div className="flex items-center gap-3 text-xs text-muted-foreground font-medium">
@@ -348,7 +350,7 @@ export default function UserTickets() {
               {!selectedTicket ? (
                 <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground text-sm text-center p-6 bg-gray-50/50 rounded-xl border border-dashed border-gray-200">
                   <MessageSquare className="w-8 h-8 text-gray-300 mb-3" />
-                  Selecciona un ticket a la izquierda para ver el historial de mensajes y comunicarte con soporte.
+                  Selecciona un {settings.ticket_label.toLowerCase()} a la izquierda para ver el historial de mensajes y comunicarte con {settings.support_role_label.toLowerCase()}.
                 </div>
               ) : (
                 <>
@@ -389,7 +391,7 @@ export default function UserTickets() {
                       </div>
                     ) : comments.length === 0 ? (
                       <div className="text-center text-muted-foreground text-sm py-8 bg-white border border-dashed border-gray-200 rounded-xl">
-                        Aún no hay respuestas de soporte para este ticket.
+                        Aún no hay respuestas de {settings.support_role_label.toLowerCase()} para este {settings.ticket_label.toLowerCase()}.
                       </div>
                     ) : (
                       comments.map((comment) => {
@@ -405,7 +407,7 @@ export default function UserTickets() {
                           >
                             <div className="flex items-center justify-between mb-1.5 gap-3">
                               <span className={`font-semibold text-xs ${isMyComment ? 'text-blue-800' : 'text-gray-700'}`}>
-                                {isMyComment ? "Tú" : (comment.user_name || "Equipo de Soporte")}
+                                {isMyComment ? "Tú" : (comment.user_name || `Equipo de ${settings.support_role_label}`)}
                               </span>
                             </div>
                             <p className="text-gray-700 whitespace-pre-wrap leading-relaxed break-words">{comment.body}</p>
@@ -454,7 +456,7 @@ export default function UserTickets() {
                     </div>
                   ) : (
                     <div className="p-4 bg-gray-50 border border-gray-200 rounded-xl text-center text-sm text-gray-500 mt-4">
-                      Este ticket ha sido {selectedTicket.status.toLowerCase()} y el hilo de comentarios está cerrado.
+                      Este {settings.ticket_label.toLowerCase()} ha sido {selectedTicket.status.toLowerCase()} y el hilo de comentarios está cerrado.
                     </div>
                   )}
                 </>

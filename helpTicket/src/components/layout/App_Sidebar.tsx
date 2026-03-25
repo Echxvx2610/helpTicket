@@ -36,14 +36,17 @@ import {
     UserRoundPen,
     LayoutDashboard,
     LogOut,
-    Ticket
+    Ticket,
+    Palette
 } from "lucide-react"
 import { useAuth } from "@/hooks/useAuth"
+import { useOrgSettings } from "@/contexts/OrgSettingsContext"
 
 export function App_Sidebar() {
     const { setOpenMobile } = useSidebar()
     const navigate = useNavigate()
     const { profile, logout } = useAuth()
+    const { settings } = useOrgSettings()
 
     const handleNavigation = () => setOpenMobile(false)
     const handleLogout = async () => {
@@ -70,7 +73,7 @@ export function App_Sidebar() {
                                     <img src="/helpticketicon.svg" alt="logo" />
                                 </div>
                                 <div className="grid flex-1 text-left text-sm leading-tight">
-                                    <span className="truncate font-semibold">HelpTicket</span>
+                                    <span className="truncate font-semibold">{settings.system_name}</span>
                                     <span className="truncate text-xs">ViperDevs</span>
                                 </div>
                             </SidebarMenuButton>
@@ -176,7 +179,9 @@ export function App_Sidebar() {
                                     </Avatar>
                                     <div className="grid flex-1 text-left text-sm leading-tight">
                                         <span className="truncate font-semibold">{userName}</span>
-                                        <span className="truncate text-xs capitalize text-muted-foreground">{userRole}</span>
+                                        <span className="truncate text-xs capitalize text-muted-foreground">
+                                            {userRole === 'admin' ? 'Administrador' : userRole === 'support' ? settings.support_role_label : (settings.operator_role_label || settings.user_role_label)}
+                                        </span>
                                     </div>
                                     <ChevronsUpDown className="ml-auto size-4" />
                                 </SidebarMenuButton>
@@ -201,7 +206,10 @@ export function App_Sidebar() {
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem onClick={() => navigate('/perfil')}><UserRoundPen className="mr-2 w-4 h-4" /> Perfil</DropdownMenuItem>
                                 {userRole === 'admin' && (
-                                    <DropdownMenuItem onClick={() => navigate('/billing')}><WalletMinimal className="mr-2 w-4 h-4" /> Gestion de Planes</DropdownMenuItem>
+                                    <>
+                                        <DropdownMenuItem onClick={() => navigate('/personalizacion')}><Palette className="mr-2 w-4 h-4" /> Personalización</DropdownMenuItem>
+                                        <DropdownMenuItem onClick={() => navigate('/billing')}><WalletMinimal className="mr-2 w-4 h-4" /> Gestion de Planes</DropdownMenuItem>
+                                    </>
                                 )}
                                 <DropdownMenuItem onClick={handleLogout} className="text-red-500"><LogOut className="mr-2 w-4 h-4" /> Cerrar Sesión</DropdownMenuItem>
                             </DropdownMenuContent>

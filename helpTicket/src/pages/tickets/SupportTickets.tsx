@@ -16,6 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { useOrgSettings } from "@/contexts/OrgSettingsContext"
 
 interface Ticket {
   id: string
@@ -68,6 +69,7 @@ const STATE_LABELS: Record<string, string> = {
 
 export default function SupportTickets() {
   const { user, profile } = useAuth()
+  const { settings } = useOrgSettings()
   const [tickets, setTickets] = useState<Ticket[]>([])
   const [loading, setLoading] = useState(true)
   const [statusFilter, setStatusFilter] = useState("all")
@@ -95,12 +97,21 @@ export default function SupportTickets() {
   const fetchSupportUsers = async () => {
     if (!profile?.organization_id) return
     const { data } = await supabase
-      .from("profiles")
-      .select("id, full_name, email")
-      .eq("role", "support")
+      .from("organization_members")
+      .select(`
+        profiles (
+          id,
+          full_name,
+          email
+        )
+      `)
       .eq("organization_id", profile.organization_id)
+      .in("role", ["support", "admin"])
       
-    if (data) setSupportUsers(data)
+    if (data) {
+      const mappedUsers = data.map((m: any) => m.profiles).filter(Boolean)
+      setSupportUsers(mappedUsers)
+    }
   }
 
   useEffect(() => {
@@ -249,12 +260,28 @@ export default function SupportTickets() {
     if (!window.confirm("¿Seguro que deseas eliminar permanentemente este ticket? Esta acción no se puede deshacer.")) return;
     
     setUpdating(id)
-    const { error } = await supabase.from("tickets").delete().eq("id", id)
+    
+    // Primero eliminar referencias (comentarios y adjuntos)
+    const { error: errComments } = await supabase.from("ticket_comments").delete().eq("ticket_id", id)
+    if (errComments) console.error("Error al eliminar comentarios:", errComments)
+
+    const { error: errAttachments } = await supabase.from("ticket_attachments").delete().eq("ticket_id", id)
+    if (errAttachments) console.error("Error al eliminar adjuntos:", errAttachments)
+
+    // Eliminar el ticket principal y verificar si fue afectado (RLS puede bloquear sin error)
+    const { data: deleted, error } = await supabase
+      .from("tickets")
+      .delete()
+      .eq("id", id)
+      .select()
+
     if (error) {
-       alert("Error eliminando ticket: " + error.message)
+      alert("Error eliminando ticket: " + error.message)
+    } else if (!deleted || deleted.length === 0) {
+      alert("No se pudo eliminar el ticket. Verifica que tengas permisos (política RLS) para eliminar tickets en Supabase.")
     } else {
-       setSelectedTicket(null)
-       fetchTickets()
+      setSelectedTicket(null)
+      fetchTickets()
     }
     setUpdating(null)
   }
@@ -336,8 +363,8 @@ export default function SupportTickets() {
     <div className="flex flex-col gap-6 animate-in fade-in duration-500">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-3xl font-bold tracking-tight text-gray-800">Tickets de Soporte</h2>
-          <p className="text-muted-foreground">Gestiona y atiende las solicitudes de usuarios</p>
+          <h2 className="text-3xl font-bold tracking-tight text-gray-800">{settings.ticket_label}s de {settings.support_role_label}</h2>
+          <p className="text-muted-foreground">Gestiona y atiende las solicitudes de {settings.user_role_label.toLowerCase()}s</p>
         </div>
       </div>
 
@@ -365,7 +392,7 @@ export default function SupportTickets() {
         >
           <div className="absolute top-0 left-0 w-1 h-full bg-blue-500 group-hover:w-1.5 transition-all" />
           <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0 relative z-10">
-            <CardTitle className="text-sm font-semibold text-blue-900 uppercase tracking-wider">Mis Tickets</CardTitle>
+            <CardTitle className="text-sm font-semibold text-blue-900 uppercase tracking-wider">Mis {settings.ticket_label}s</CardTitle>
             <div className="p-2 bg-blue-100 rounded-full">
               <Ticket className="w-4 h-4 text-blue-600" />
             </div>
@@ -389,7 +416,7 @@ export default function SupportTickets() {
           </CardHeader>
           <CardContent className="relative z-10">
             <div className="text-4xl font-black text-green-950 tracking-tight">{tickets.length}</div>
-            <p className="text-xs text-green-600 mt-2 font-medium">Todos los tickets</p>
+            <p className="text-xs text-green-600 mt-2 font-medium">Todos los {settings.ticket_label.toLowerCase()}s</p>
           </CardContent>
         </Card>
       </div>
@@ -399,7 +426,7 @@ export default function SupportTickets() {
           <Search className="w-5 h-5 text-gray-400" />
           <input 
             type="text" 
-            placeholder="Buscar tickets por título, descripción, área, prioridad o usuario..." 
+            placeholder={`Buscar ${settings.ticket_label.toLowerCase()}s por título, descripción, ${settings.location_label.toLowerCase()}, prioridad o usuario...`} 
             className="w-full bg-transparent text-sm border-none focus:ring-0 outline-none placeholder:text-gray-400"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
@@ -436,10 +463,10 @@ export default function SupportTickets() {
             </Select>
           ) : (
             <Select value={assigneeFilter} onValueChange={setAssigneeFilter}>
-              <SelectTrigger className="w-[160px] h-8 text-xs bg-gray-50"><SelectValue placeholder="Mis tickets" /></SelectTrigger>
+              <SelectTrigger className="w-[160px] h-8 text-xs bg-gray-50"><SelectValue placeholder={`Mis ${settings.ticket_label.toLowerCase()}s`} /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Asignado a: Todos</SelectItem>
-                <SelectItem value="me">Mis Tickets</SelectItem>
+                <SelectItem value="me">Mis {settings.ticket_label}s</SelectItem>
                 <SelectItem value="unassigned">Sin Asignar</SelectItem>
               </SelectContent>
             </Select>
@@ -452,7 +479,7 @@ export default function SupportTickets() {
           <Card className="shadow-sm">
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle>
-                Directorio de Tickets
+                Directorio de {settings.ticket_label}s
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -473,7 +500,7 @@ export default function SupportTickets() {
                   </p>
                 </div>
               ) : (
-                <div className="space-y-3">
+                <div className="space-y-3 max-h-[calc(100vh-18rem)] overflow-y-auto pr-1">
                   {filteredTickets.map((ticket) => (
                     <div
                       key={ticket.id}
@@ -498,9 +525,9 @@ export default function SupportTickets() {
                             {ticket.description}
                           </p>
                           <div className="flex items-center gap-3 text-xs text-muted-foreground font-medium flex-wrap">
-                            <span className="bg-gray-100 px-2 py-1 rounded-md flex items-center gap-1">
-                              <User className="w-3 h-3" />
-                              {ticket.creator_name || ticket.creator_email}
+                            <span className="bg-gray-100 px-2 py-1 rounded-md flex items-center gap-1 min-w-0">
+                              <User className="w-3 h-3 shrink-0" />
+                              <span className="truncate max-w-[120px]">{ticket.creator_name || ticket.creator_email}</span>
                             </span>
                             <span className="bg-gray-100 px-2 py-1 rounded-md">{ticket.type}</span>
                             {ticket.location && (
@@ -600,7 +627,7 @@ export default function SupportTickets() {
                               ) : (
                                 <ChevronRight className="w-3 h-3" />
                               )}
-                              Tomar ticket
+                              Tomar {settings.ticket_label.toLowerCase()}
                             </Button>
                           ) : ticket.assigned_to && profile?.role === "support" ? (
                             <span className="text-[10px] text-muted-foreground mt-2 whitespace-nowrap">
@@ -649,7 +676,7 @@ export default function SupportTickets() {
               {!selectedTicket ? (
                 <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground text-sm text-center p-6 bg-gray-50/50 rounded-xl border border-dashed border-gray-200">
                   <MessageSquare className="w-8 h-8 text-gray-300 mb-3" />
-                  Selecciona un ticket para ver y agregar notas/respuestas.
+                  Selecciona un {settings.ticket_label.toLowerCase()} para ver y agregar notas/respuestas.
                 </div>
               ) : (
                 <>
@@ -729,7 +756,7 @@ export default function SupportTickets() {
 
                   {selectedTicket.status === "Resuelto" || selectedTicket.status === "Cerrado" ? (
                     <div className="p-4 bg-gray-50 border-t border-gray-100 text-center text-sm text-muted-foreground rounded-b-xl">
-                      Este ticket ha sido marcado como {selectedTicket.status.toLowerCase()}. El hilo de comentarios está cerrado.
+                      Este {settings.ticket_label.toLowerCase()} ha sido marcado como {selectedTicket.status.toLowerCase()}. El hilo de comentarios está cerrado.
                       {profile?.role === "support" && " Si fue un error o falsa alarma, contacta a un administrador para reabrir y liberar el ticket."}
                     </div>
                   ) : (

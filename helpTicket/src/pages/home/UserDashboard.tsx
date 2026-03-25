@@ -1,10 +1,10 @@
 import { useState, useEffect } from "react"
 import { Link } from "react-router-dom"
 import { useAuth } from "@/hooks/useAuth"
+import { useOrgSettings } from "@/contexts/OrgSettingsContext"
 import { supabase } from "@/lib/supabaseClient"
 import { CreateTicketDialog } from "@/components/tickets/CreateTicketDialog"
 import { Card, CardContent } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
 import {
   PlusCircle,
   Ticket,
@@ -13,7 +13,6 @@ import {
   ArrowRight,
   Search,
   MessageSquare,
-  Loader2
 } from "lucide-react"
 
 interface TicketData {
@@ -24,12 +23,6 @@ interface TicketData {
   created_at: string
 }
 
-const PRIORITY_COLORS: Record<string, string> = {
-  Baja: "bg-green-100 text-green-800",
-  Media: "bg-yellow-100 text-yellow-800",
-  Alta: "bg-orange-100 text-orange-800",
-  Urgente: "bg-red-100 text-red-800",
-}
 
 const STATE_LABELS: Record<string, string> = {
   Abierto: "Abierto",
@@ -40,6 +33,7 @@ const STATE_LABELS: Record<string, string> = {
 
 export default function UserDashboard() {
   const { profile, user } = useAuth()
+  const { settings } = useOrgSettings()
   const [recentTickets, setRecentTickets] = useState<TicketData[]>([])
   const [loading, setLoading] = useState(true)
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -80,20 +74,20 @@ export default function UserDashboard() {
       {/* Banner de Bienvenida */}
       <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-blue-600 to-indigo-700 p-8 sm:p-10 shadow-lg text-white">
         <div className="relative z-10">
-          <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight mb-3">
+          <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight mb-3 truncate pr-4">
             ¡Hola, {firstName}! 👋
           </h1>
           <p className="text-blue-100 text-lg max-w-xl mb-8">
-            Bienvenido al centro de soporte. ¿En qué te podemos ayudar hoy? Estamos aquí para resolver tus inquietudes.
+            Bienvenido a {settings.system_name}. ¿En qué te podemos ayudar hoy? Estamos aquí para resolver tus inquietudes.
           </p>
 
           <div className="relative max-w-md w-full">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
             <input
               type="text"
               placeholder="Buscar en la base de conocimientos..."
               className="w-full bg-white/10 backdrop-blur-md border border-white/20 text-white placeholder:text-blue-200 rounded-full py-3.5 pl-12 pr-4 focus:outline-none focus:ring-2 focus:ring-white/50 transition-all font-medium"
             />
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-blue-200 pointer-events-none" />
           </div>
         </div>
 
@@ -113,8 +107,8 @@ export default function UserDashboard() {
             <div className="w-14 h-14 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
               <PlusCircle className="w-7 h-7" />
             </div>
-            <h3 className="font-bold text-gray-800 text-lg mb-1">Crear Ticket</h3>
-            <p className="text-sm text-gray-500">Reporta un nuevo problema o solicitud técnica.</p>
+            <h3 className="font-bold text-gray-800 text-lg mb-1 line-clamp-1">Crear {settings.ticket_label}</h3>
+            <p className="text-sm text-gray-500 line-clamp-2">Reporta un nuevo problema o solicitud técnica.</p>
           </CardContent>
         </Card>
 
@@ -125,8 +119,8 @@ export default function UserDashboard() {
               <div className="w-14 h-14 rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                 <Ticket className="w-7 h-7" />
               </div>
-              <h3 className="font-bold text-gray-800 text-lg mb-1">Mis Tickets</h3>
-              <p className="text-sm text-gray-500">Revisa el estado de todas tus solicitudes activas.</p>
+              <h3 className="font-bold text-gray-800 text-lg mb-1 line-clamp-1">Mis {settings.ticket_label}s</h3>
+              <p className="text-sm text-gray-500 line-clamp-2">Revisa el estado de todas tus solicitudes activas.</p>
             </CardContent>
           </Card>
         </Link>
@@ -137,8 +131,8 @@ export default function UserDashboard() {
             <div className="w-14 h-14 rounded-2xl bg-green-50 text-green-600 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
               <BookOpen className="w-7 h-7" />
             </div>
-            <h3 className="font-bold text-gray-800 text-lg mb-1">Base de Ayuda</h3>
-            <p className="text-sm text-gray-500">Encuentra guías y soluciones paso a paso.</p>
+            <h3 className="font-bold text-gray-800 text-lg mb-1 line-clamp-1">Base de Ayuda</h3>
+            <p className="text-sm text-gray-500 line-clamp-2">Encuentra guías y soluciones paso a paso.</p>
           </CardContent>
         </Card>
       </div>
@@ -155,8 +149,8 @@ export default function UserDashboard() {
           </Link>
         </div>
 
-        <Card className="border-none shadow-md overflow-hidden bg-white">
-          <div className="divide-y divide-gray-100">
+        <Card className="border-none shadow-md overflow-hidden bg-white flex flex-col">
+          <div className="divide-y divide-gray-100 overflow-y-auto max-h-[320px] scrollbar-thin scrollbar-thumb-gray-200">
             {loading ? (
               <div className="p-8 text-center text-muted-foreground flex items-center justify-center gap-2">
                 <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
